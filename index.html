@@ -874,7 +874,6 @@
       <h1>대전하기중학교</h1>
       <div class="header-notice-container">
         <button class="header-notice-btn" onclick="openNoticeModal()">사용방법</button>
-        <div class="notice-sub-comment">지가 안읽어놓고 불편하다며 떼쓰기는 ㄴㄴ</div>
       </div>
     </div>
     <div class="class-select-box">
@@ -917,14 +916,14 @@
 
       <!-- 시간표 수정 영역 -->
       <div id="editScheduleArea" style="display: none; background: #f8fafc; padding: 15px; border-radius: 8px; border: 1px dashed #cbd5e1;">
-        <div style="font-weight: bold; color: #1e293b; margin-bottom: 10px; font-size: 15px;">과목명 수정하기</div>
+        <div style="font-weight: bold; color: #1e293b; margin-bottom: 10px; font-size: 15px;">과목수정하기</div>
         <div id="inputForm"></div>
         <button class="btn-primary" onclick="saveSchedule()">수정사항 저장하기</button>
       </div>
 
       <!-- 공지 설정 영역 -->
       <div id="editClassNoticeArea" style="display: none; background: #fffbeb; padding: 15px; border-radius: 8px; border: 1px dashed #d97706; margin-top: 10px;">
-        <div style="font-weight: bold; color: #b45309; margin-bottom: 10px; font-size: 15px;" id="noticeEditTitle">과목별준비물알람설정(해당수업시작10분전에뜸)</div>
+        <div style="font-weight: bold; color: #b45309; margin-bottom: 10px; font-size: 15px;" id="noticeEditTitle">과목별준비물알람설정</div>
         <div id="classInputForm"></div>
         <button class="btn-primary" style="background: #d97706;" onclick="saveClassNotices()">공지 저장하기</button>
       </div>
@@ -996,7 +995,7 @@
   <div id="mealModal" class="modal" onclick="closeModalOnBg(event, 'mealModal')">
     <div class="modal-content">
       <div class="modal-header">
-        <h3 id="modalTitle" style="margin:0;">이번 달 전체 급식표</h3>
+        <h3 id="modalTitle" style="margin:0;">이번 달 급식표</h3>
         <button class="close-btn" onclick="closeMealModal()">&times;</button>
       </div>
       <div id="monthlyMealGrid" class="monthly-grid">급식표를 불러오는 중...</div>
@@ -1260,7 +1259,7 @@
       });
 
       localStorage.setItem("hagi_" + gc.g + "_" + gc.c + "_rest_notices", JSON.stringify(newNotices));
-      alert(gc.g + "학년 " + gc.c + "반 공지사항이 저장되었습니다!");
+      alert(gc.g + "학년 " + gc.c + "반 공지사항이 저장되었습니다.");
       
       document.getElementById("editClassNoticeArea").style.display = "none";
       document.getElementById("viewScheduleArea").style.display = "block";
@@ -1749,7 +1748,7 @@
         console.error("클라우드 동기화 실패:", err);
       }
 
-      alert(gc.g + "학년 " + gc.c + "반 " + dayNames[currentDay] + " 시간표가 저장되었습니다!\n(수정한 시간표는 전자칠판에도 실시간 반영됩니다.)");
+      alert(gc.g + "학년 " + gc.c + "반 " + dayNames[currentDay] + " 시간표가 저장되었습니다.");
       document.getElementById("editScheduleArea").style.display = "none";
       document.getElementById("viewScheduleArea").style.display = "block";
       renderScheduleView();
