@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <title>푸바오가 늑구를 찾아 부캉이를 타고 돌아오게 하는 게임</title>
+  <style>
+    body { margin: 0; background: #0f172a; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; color: white; font-family: sans-serif; user-select: none; }
+    canvas { background: #1e293b; border: 4px solid #334155; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); touch-action: manipulation; }
+    .info { margin-bottom: 10px; font-size: 20px; font-weight: bold; }
+    #restartBtn { display: none; margin-top: 15px; padding: 10px 30px; font-size: 18px; font-weight: bold; background: #059669; color: white; border: none; border-radius: 8px; cursor: pointer; }
+    #restartBtn:hover { background: #047857; }
+  </style>
+</head>
+<body>
+  <div class="info" id="gameInfo">점수: 0 | 푸바오야 늑구를 찾아줭</div>
+  <canvas id="gameCanvas" width="800" height="400"></canvas>
+  <button id="restartBtn" onclick="resetGame()">다시하기</button>
+
+  <script>
+    const canvas = document.getElementById("gameCanvas");
+    const ctx = canvas.getContext("2d");
+    const restartBtn = document.getElementById("restartBtn");
+
+    // 개발자 테스트용 치트 변수
+    window.godMode = false;   
+    window.autoPlay = false;  
+
+    let score = 0;
+    let stage = 1;
+    let isGameOver = false;
+    let isWin = false;
+    let gameState = "PLAYING"; // "PLAYING", "AUTO_CATCH"
+    
+    // 화면 오른쪽 끝에 멈춰 설 상대방의 X 좌표 고정 위치
+    let fixedNpcX = 680;
+    let safeTimer = 120; // 스테이지 시작 후 안전 시간 (2초 동안 장애물 생성 및 충돌 방지)
+
+    // 배경음악(BGM) 설정 및 무한 반복(loop) 활성화
+    const bgm = new Audio("bgm.mp3");
+    bgm.loop = true; 
+    let bgmStarted = false;
+
+    // 브라우저 정책 대응: 화면을 클릭하거나 키를 누르는 순간 BGM 재생 시작
+    function startBgm() {
+      if (!bgmStarted) {
+        bgm.play().catch(() => {});
+        bgmStarted = true;
+      }
+    }
+
+    const imgFubaoRun = new Image(); imgFubaoRun.src = "fubao_run.png";
+    const imgNeukguRun = new Image(); imgNeukguRun.src = "neukgu_run.png";
+    const imgBukangRun = new Image(); imgBukangRun.src = "bukang_run.png";
+    const imgHug = new Image(); imgHug.src = "fubao_hug_neukgu.png";
+    const imgBukangRide = new Image(); imgBukangRide.src = "fubao_neukgu_bukang.png";
+    const imgZookeeper = new Image(); imgZookeeper.src = "zookeeper.png";
+    const imgObstacle = new Image(); imgObstacle.src = "obstacle.png";
+
+    // 점프력을 -17.5로 상향 조정하여 더 빠르고 시원하게 뛰어넘도록 수정
+    let player = { x: 80, y: 260, w: 90, h: 90, vy: 0, jumpPower: -17.5, grounded: true };
+    let npc = { y: 260, vy: 0, jumpPower: -14, grounded: true, xOffset: 200, targetOffset: 200 };
+
+    let obstacles = [];
+    let coins = [];
+
+    function triggerJump() {
+      startBgm(); 
+      if (player.grounded && !isGameOver && !isWin && gameState === "PLAYING") {
+        player.vy = player.jumpPower;
+        player.grounded = false;
+      }
+    }
+
+    window.addEventListener("keydown", e => {
+      if (e.code === "Space" || e.code === "ArrowUp") {
+        triggerJump();
+      }
+    });
+
+    canvas.addEventListener("pointerdown", e => {
+      startBgm(); 
+      triggerJump();
+    });
+
+    // 점수 및 스테이지 전환 체크 타이머 (PLAYING 상태일 때만 점수 증가)
+    setInterval(() => {
+      if (!isGameOver && !isWin && gameState === "PLAYING") {
+        score += 1;
+        
+        // 스테이지 1 -> 2 (100점 도달)
+        if (stage === 1 && score >= 100) {
+          score = 100;
+          startAutoCatch();
+        }
+        // 스테이지 2 -> 3 (500점 도달)
+        else if (stage === 2 && score >= 500) {
+          score = 500;
+          startAutoCatch();
+        }
+        // 최종 클리어 (1000점 도달)
+        else if (stage === 3 && score >= 1000) {
+          score = 1000;
+          startAutoCatch();
+        }
+      }
+    }, 1000);
+
+    // 목표 점수 도달 시: 장애물 제거 후 상대방을 화면 끝에 멈춰 세우고 자동 잡기 모드 진입
+    function startAutoCatch() {
+      gameState = "AUTO_CATCH";
+      obstacles = []; 
+      coins = [];     
+    }
+
+    function resetGame() {
+      score = 0;
+      stage = 1;
+      isGameOver = false;
+      isWin = false;
+      gameState = "PLAYING";
+      player.x = 80;
+      player.y = 260;
+      player.vy = 0;
+      player.grounded = true;
+      npc.y = 260;
+      npc.vy = 0;
+      npc.targetOffset = 200;
+      obstacles = [];
+      coins = [];
+      safeTimer = 120;
+      restartBtn.style.display = "none";
+    }
+
+    function spawnObjects() {
+      if (safeTimer > 0) return; // 안전 시간 동안은 장애물 생성 안 함
+
+      let lastObs = obstacles.length > 0 ? obstacles[obstacles.length - 1] : null;
+      let minGap = 420;
+
+      if (!lastObs || (canvas.width - lastObs.x > minGap)) {
+        if (Math.random() < 0.015) {
+          obstacles.push({ x: canvas.width, y: 275, w: 75, h: 75, speed: stage === 3 ? 7 : 6 });
+        }
+      }
+
+      if (Math.random() < 0.01) {
+        coins.push({ x: canvas.width, y: Math.random() * 50 + 130, w: 50, h: 50, speed: 6 });
+      }
+    }
+
+    function update() {
+      if (isGameOver || isWin) return;
+
+      // 안전 시간 타이머 감소
+      if (safeTimer > 0) {
+        safeTimer--;
+      }
+
+      // 물리 연산 (중력) 및 착지 감지
+      let justLanded = false;
+      player.vy += 0.65;
+      player.y += player.vy;
+      if (player.y > 260) {
+        player.y = 260;
+        if (!player.grounded) {
+          justLanded = true;
+        }
+        player.vy = 0;
+        player.grounded = true;
+      }
+
+      if (gameState === "PLAYING") {
+        npc.vy += 0.65;
+        npc.y += npc.vy;
+        if (npc.y > 260) {
+          npc.y = 260;
+          npc.vy = 0;
+          npc.grounded = true;
+        }
+
+        if (npc.grounded && Math.random() < 0.008) {
+          npc.vy = npc.jumpPower;
+          npc.grounded = false;
+        }
+        npc.xOffset = npc.targetOffset + Math.sin(Date.now() / 300) * 40;
+
+        if (window.autoPlay && player.grounded) {
+          let nearestObs = obstacles.find(o => o.x > player.x && o.x < player.x + 180);
+          if (nearestObs) {
+            triggerJump();
+          }
+        }
+
+        spawnObjects();
+
+        // 장애물 이동 및 충돌 체크 (안전 시간 동안은 충돌 무시)
+        for (let i = obstacles.length - 1; i >= 0; i--) {
+          let obs = obstacles[i];
+          obs.x -= obs.speed;
+
+          let hitMargin = 3; 
+          if (safeTimer === 0 && !window.godMode && 
+              player.x + hitMargin < obs.x + obs.w && 
+              player.x + player.w - hitMargin > obs.x && 
+              player.y + hitMargin < obs.y + obs.h && 
+              player.y + player.h - hitMargin > obs.y) {
+            isGameOver = true;
+            restartBtn.style.display = "block";
+          }
+          if (obs.x < -100) obstacles.splice(i, 1);
+        }
+
+        // 코인(별) 먹기 체크
+        for (let i = coins.length - 1; i >= 0; i--) {
+          let coin = coins[i];
+          coin.x -= coin.speed;
+
+          if (player.x < coin.x + coin.w && player.x + player.w > coin.x && player.y < coin.y + coin.h && player.y + coin.h > coin.y) {
+            score += 5;
+            coins.splice(i, 1);
+
+            if (stage === 1 && score >= 100) {
+              score = 100;
+              startAutoCatch();
+            } else if (stage === 2 && score >= 500) {
+              score = 500;
+              startAutoCatch();
+            } else if (stage === 3 && score >= 1000) {
+              score = 1000;
+              startAutoCatch();
+            }
+          }
+          if (coin.x < -100) coins.splice(i, 1);
+        }
+      } 
+      // AUTO_CATCH: 상대방은 화면 끝에 멈춰 있고, 푸바오가 자동으로 달려가 '자동 점프'로 덮쳐 잡는 구간
+      else if (gameState === "AUTO_CATCH") {
+        if (player.x < fixedNpcX - 90 && player.grounded) {
+          player.x += 3.5; // 자동으로 오른쪽으로 달려감
+        } else if (player.grounded) {
+          // 늑구 앞에서 자동으로 멋지게 점프! (플레이어 조작 필요 없음)
+          player.vy = -14;
+          player.grounded = false;
+        } else {
+          // 공중에서 포물선을 그리며 전진
+          player.x += 3.5;
+        }
+
+        // 점프한 뒤 바닥에 완벽히 착지하는 순간 다음 단계로 자동 전환!
+        if (justLanded) {
+          if (stage === 1) {
+            stage = 2;
+            npc.targetOffset = 220;
+            player.x = 80;          // 왼쪽 시작점으로 완벽 리셋
+            obstacles = [];         // 장애물 초기화
+            coins = [];             // 코인 초기화
+            safeTimer = 120;        // 2초 동안 안전 시간 부여 (장애물 생성 및 충돌 방지)
+            gameState = "PLAYING";  // 게임 재개
+          } else if (stage === 2) {
+            stage = 3;
+            npc.targetOffset = -120;
+            player.x = 80;          // 왼쪽 시작점으로 완벽 리셋
+            obstacles = [];         // 장애물 초기화
+            coins = [];             // 코인 초기화
+            safeTimer = 120;        // 2초 동안 안전 시간 부여
+            gameState = "PLAYING";  // 게임 재개
+          } else if (stage === 3) {
+            isWin = true;
+            restartBtn.style.display = "block";
+          }
+        }
+      }
+    }
+
+    // 이미지가 로드되지 않았을 때 대신 그려줄 대체 도형 함수 (전자칠판 필수 안전장치)
+    function drawSafeImage(img, x, y, w, h, fallbackColor) {
+      if (img.complete && img.naturalWidth !== 0) {
+        ctx.drawImage(img, x, y, w, h);
+      } else {
+        ctx.fillStyle = fallbackColor;
+        ctx.fillRect(x, y, w, h);
+        // 글자 표시
+        ctx.fillStyle = "#ffffff";
+        ctx.font = "12px sans-serif";
+        ctx.textAlign = "center";
+        ctx.fillText("LOADING", x + w/2, y + h/2);
+      }
+    }
+
+    function draw() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      ctx.fillStyle = "#334155";
+      ctx.fillRect(0, 350, canvas.width, 50);
+
+      // AUTO_CATCH 상태일 때는 상대방을 화면 끝(fixedNpcX)에 고정해서 멈춰 세움
+      let currentNpcX = (gameState === "AUTO_CATCH") ? fixedNpcX : (player.x + npc.xOffset);
+
+      if (stage === 1) {
+        drawSafeImage(imgNeukguRun, currentNpcX, npc.y + 10, 80, 80, "#d97706");
+        drawSafeImage(imgFubaoRun, player.x, player.y, player.w, player.h, "#10b981");
+      } 
+      else if (stage === 2) {
+        drawSafeImage(imgBukangRun, currentNpcX, npc.y + 25, 110, 65, "#3b82f6");
+        drawSafeImage(imgHug, player.x, player.y, 100, 90, "#ec4899");
+      } 
+      else if (stage === 3) {
+        drawSafeImage(imgBukangRide, player.x, player.y - 10, 120, 100, "#8b5cf6");
+        drawSafeImage(imgZookeeper, currentNpcX, npc.y - 10, 90, 100, "#64748b");
+      }
+
+      obstacles.forEach(obs => {
+        if (imgObstacle.complete && imgObstacle.naturalWidth !== 0) {
+          ctx.drawImage(imgObstacle, obs.x, obs.y, obs.w, obs.h);
+        } else {
+          ctx.fillStyle = "#ef4444";
+          ctx.fillRect(obs.x, obs.y, obs.w, obs.h);
+        }
+      });
+
+      ctx.fillStyle = "#eab308";
+      coins.forEach(coin => {
+        ctx.beginPath();
+        ctx.arc(coin.x + coin.w/2, coin.y + coin.h/2, coin.w/2, 0, Math.PI * 2);
+        ctx.fill();
+      });
+
+      let stageText = "푸바오야 늑구를 찾아줭";
+      if (stage === 2) stageText = "늑구를 안은 푸바오의 부캉이 얻기 대작전";
+      if (stage === 3) stageText = "늑구를 안고 부캉이를 탄 푸바오의 자유 되찾기 대작전";
+      document.getElementById("gameInfo").textContent = "점수: " + score + " | " + stageText;
+
+      if (isGameOver || isWin) {
+        ctx.fillStyle = "rgba(0,0,0,0.85)";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.textAlign = "center";
+        
+        if (isGameOver) {
+          ctx.fillStyle = "#ef4444";
+          ctx.font = "bold 40px sans-serif";
+          ctx.fillText("실패", canvas.width/2, canvas.height/2 + 10);
+        } else if (isWin) {
+          ctx.fillStyle = "#3b82f6";
+          ctx.font = "bold 30px sans-serif";
+          ctx.fillText("바다로 탈출했지만 어부에게 잡혔다... (실패)", canvas.width/2, canvas.height/2 + 10);
+        }
+      }
+    }
+
+    function loop() {
+      update();
+      draw();
+      requestAnimationFrame(loop);
+    }
+
+    loop();
+  </script>
+</body>
+</html>
