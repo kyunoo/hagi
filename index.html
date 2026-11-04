@@ -851,7 +851,7 @@
       padding: 10px 5px;
     }
 
-    /* dohun.png 팝업 오버레이 스타일 */
+    /* IMG_0212.png 팝업 오버레이 스타일 */
     #dohunOverlay {
       display: none;
       position: fixed;
@@ -874,9 +874,9 @@
 </head>
 <body>
 
-  <!-- dohun.png 3초 팝업 오버레이 -->
+  <!-- IMG_0212.png 3초 팝업 오버레이 -->
   <div id="dohunOverlay">
-    <img src="dohun.png" alt="dohun">
+    <img src="IMG_0212.png" alt="IMG_0212">
   </div>
 
   <!-- 커튼 및 비디오 연출 레이어 -->
@@ -1947,7 +1947,7 @@
     }
 
     /* ----------------------------------------------------
-        번호 제비뽑기 (3334 입력 시 dohun.png 3초 동안 띄우기)
+        번호 제비뽑기 (3334 입력 시 IMG_0212.png 3초 동안 띄우기)
     ---------------------------------------------------- */
     function runLottery() {
       const totalInput = document.getElementById("lotteryCount");
@@ -1962,11 +1962,11 @@
         return;
       }
 
-      // 3334 입력 시 dohun.png 3초간 띄우기
+      // 3334 입력 시 IMG_0212.png 3초간 띄우기
       if (countVal === "3334") {
         const dohunOverlay = document.getElementById("dohunOverlay");
         dohunOverlay.style.display = "flex";
-        resDiv.textContent = "도훈이 등장!";
+        resDiv.textContent = "등장!";
         setTimeout(function() {
           dohunOverlay.style.display = "none";
           resDiv.textContent = "";
