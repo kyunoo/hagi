@@ -850,9 +850,34 @@
       white-space: pre-line;
       padding: 10px 5px;
     }
+
+    /* dohun.png 팝업 오버레이 스타일 */
+    #dohunOverlay {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: rgba(0, 0, 0, 0.75);
+      z-index: 999999;
+      justify-content: center;
+      align-items: center;
+    }
+    #dohunOverlay img {
+      max-width: 80%;
+      max-height: 80%;
+      border-radius: 12px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    }
   </style>
 </head>
 <body>
+
+  <!-- dohun.png 3초 팝업 오버레이 -->
+  <div id="dohunOverlay">
+    <img src="dohun.png" alt="dohun">
+  </div>
 
   <!-- 커튼 및 비디오 연출 레이어 -->
   <div id="curtainContainer" class="curtain-container">
@@ -880,12 +905,12 @@
       <select id="gradeSelect" onchange="changeClass()">
         <option value="1">1학년</option>
         <option value="2">2학년</option>
-        <option value="3">3학년</option>
+        <option value="3" selected>3학년</option>
       </select>
       <select id="classSelect" onchange="changeClass()">
         <option value="1">1반</option>
         <option value="2">2반</option>
-        <option value="3">3반</option>
+        <option value="3" selected>3반</option>
         <option value="4">4반</option>
         <option value="5">5반</option>
         <option value="6">6반</option>
@@ -1110,6 +1135,7 @@
     window.onSnapshot = onSnapshot;
 
     // 실시간 감지 리스너 (전자칠판 자동 반영용)
+    const gcInit = { g: "3", c: "3" };
     onSnapshot(doc(db, "school_schedules", "current"), (docSnap) => {
       if (docSnap.exists()) {
         const cloudData = docSnap.data();
@@ -1491,12 +1517,6 @@
     }
 
     window.onload = function() {
-      // 저장된 학년/반 불러오기
-      const savedGrade = localStorage.getItem("hagi_selected_grade");
-      const savedClass = localStorage.getItem("hagi_selected_class");
-      if (savedGrade) document.getElementById("gradeSelect").value = savedGrade;
-      if (savedClass) document.getElementById("classSelect").value = savedClass;
-
       updateClock();
       setInterval(updateClock, 1000);
       renderDday();
@@ -1505,11 +1525,6 @@
     };
 
     function changeClass() {
-      // 학년/반 바꿀 때마다 브라우저에 저장
-      const gc = getCurrentGradeClass();
-      localStorage.setItem("hagi_selected_grade", gc.g);
-      localStorage.setItem("hagi_selected_class", gc.c);
-
       selectDay(currentDay);
     }
 
@@ -1932,7 +1947,7 @@
     }
 
     /* ----------------------------------------------------
-        번호 제비뽑기 (3학년 3반 비밀번호 입력시 game.html 이동 기능 포함)
+        번호 제비뽑기 (3334 입력 시 dohun.png 3초 동안 띄우기)
     ---------------------------------------------------- */
     function runLottery() {
       const totalInput = document.getElementById("lotteryCount");
@@ -1944,6 +1959,18 @@
       // 3학년 3반일 때만 특정 비밀번호(75199521) 입력 시 게임 페이지로 이동
       if (grade === "3" && cls === "3" && countVal === "75199521") {
         window.location.href = "game.html";
+        return;
+      }
+
+      // 3334 입력 시 dohun.png 3초간 띄우기
+      if (countVal === "3334") {
+        const dohunOverlay = document.getElementById("dohunOverlay");
+        dohunOverlay.style.display = "flex";
+        resDiv.textContent = "도훈이 등장!";
+        setTimeout(function() {
+          dohunOverlay.style.display = "none";
+          resDiv.textContent = "";
+        }, 3000);
         return;
       }
 
