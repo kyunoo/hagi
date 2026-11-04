@@ -880,12 +880,12 @@
       <select id="gradeSelect" onchange="changeClass()">
         <option value="1">1학년</option>
         <option value="2">2학년</option>
-        <option value="3" selected>3학년</option>
+        <option value="3">3학년</option>
       </select>
       <select id="classSelect" onchange="changeClass()">
         <option value="1">1반</option>
         <option value="2">2반</option>
-        <option value="3" selected>3반</option>
+        <option value="3">3반</option>
         <option value="4">4반</option>
         <option value="5">5반</option>
         <option value="6">6반</option>
@@ -1110,7 +1110,6 @@
     window.onSnapshot = onSnapshot;
 
     // 실시간 감지 리스너 (전자칠판 자동 반영용)
-    const gcInit = { g: "3", c: "3" };
     onSnapshot(doc(db, "school_schedules", "current"), (docSnap) => {
       if (docSnap.exists()) {
         const cloudData = docSnap.data();
@@ -1492,6 +1491,12 @@
     }
 
     window.onload = function() {
+      // 저장된 학년/반 불러오기
+      const savedGrade = localStorage.getItem("hagi_selected_grade");
+      const savedClass = localStorage.getItem("hagi_selected_class");
+      if (savedGrade) document.getElementById("gradeSelect").value = savedGrade;
+      if (savedClass) document.getElementById("classSelect").value = savedClass;
+
       updateClock();
       setInterval(updateClock, 1000);
       renderDday();
@@ -1500,6 +1505,11 @@
     };
 
     function changeClass() {
+      // 학년/반 바꿀 때마다 브라우저에 저장
+      const gc = getCurrentGradeClass();
+      localStorage.setItem("hagi_selected_grade", gc.g);
+      localStorage.setItem("hagi_selected_class", gc.c);
+
       selectDay(currentDay);
     }
 
