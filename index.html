@@ -870,9 +870,41 @@
       border-radius: 12px;
       box-shadow: 0 10px 30px rgba(0,0,0,0.5);
     }
+
+    /* "도훈아" 음성인식 Cdh.png 페이드아웃 효과 스타일 */
+    #voiceOverlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: rgba(0, 0, 0, 0.7);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 9999999;
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 0.5s ease, visibility 0.5s ease;
+    }
+    #voiceOverlay.show {
+      opacity: 1;
+      visibility: visible;
+    }
+    #voiceOverlay img {
+      max-width: 80%;
+      max-height: 80%;
+      border-radius: 12px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.6);
+    }
   </style>
 </head>
 <body>
+
+  <!-- 음성인식 "도훈아" 감지 시 Cdh.png 2초 페이드아웃 팝업 -->
+  <div id="voiceOverlay">
+    <img src="Cdh.png" alt="Cdh">
+  </div>
 
   <!-- IMG_0212.png 3초 팝업 오버레이 -->
   <div id="dohunOverlay">
@@ -1522,6 +1554,7 @@
       renderDday();
       fetchMealByDate(currentMealDate);
       selectDay(currentDay);
+      initVoiceRecognition(); // 음성 인식 초기화 및 시작
     };
 
     function changeClass() {
@@ -1997,6 +2030,67 @@
         const selected = Math.floor(Math.random() * total) + 1;
         resDiv.textContent = "당첨: " + selected + "번!";
       }, 5000);
+    }
+
+    /* ----------------------------------------------------
+        상시 음성인식 기능 ("도훈아" 감지 로직)
+    ---------------------------------------------------- */
+    function initVoiceRecognition() {
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (!SpeechRecognition) {
+        console.warn("이 브라우저는 음성 인식을 지원하지 않습니다.");
+        return;
+      }
+
+      const recognition = new SpeechRecognition();
+      recognition.lang = 'ko-KR';
+      recognition.continuous = true;   // 상시 듣기 유지
+      recognition.interimResults = false; // 중간 결과 생략
+
+      recognition.onresult = function(event) {
+        const transcript = event.results[event.results.length - 1][0].transcript.trim();
+        console.log("인식된 음성:", transcript);
+
+        // "도훈아" 단어가 포함되어 있는지 확인 (띄어쓰기 무관하게 확인)
+        if (transcript.replace(/\s+/g, '').includes("도훈아")) {
+          triggerVoicePopup();
+        }
+      };
+
+      // 마이크가 꺼졌을 때(브라우저 제어 등으로 중단 시) 자동으로 다시 켜서 상시 대기 유지
+      recognition.onerror = function(event) {
+        console.warn("음성 인식 오류 발생:", event.error);
+      };
+
+      recognition.onend = function() {
+        try {
+          recognition.start();
+        } catch (e) {}
+      };
+
+      try {
+        recognition.start();
+        console.log("상시 음성 인식(도훈아) 대기 중...");
+      } catch (e) {}
+    }
+
+    let voicePopupTimer = null;
+    function triggerVoicePopup() {
+      const overlay = document.getElementById("voiceOverlay");
+      if (!overlay) return;
+
+      // 이미 떠 있는 경우 타이머 초기화 후 연장
+      if (voicePopupTimer) {
+        clearTimeout(voicePopupTimer);
+      }
+
+      // 화면에 표시 (Fade-in)
+      overlay.classList.add("show");
+
+      // 정확히 2초 동안 유지한 뒤 페이드아웃 시작
+      voicePopupTimer = setTimeout(function() {
+        overlay.classList.remove("show");
+      }, 2000);
     }
 
     /* ----------------------------------------------------
